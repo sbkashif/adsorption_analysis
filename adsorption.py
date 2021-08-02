@@ -18,15 +18,10 @@ def create_parser():
                                       description = 'Generate the heat map for a trajectory')
         parser.add_argument('-f', "--f", help = 'Input xtc file (Required).')
         parser.add_argument('-s',"--s",help='Input pdb file (required).')
-        parser.add_argument('-bf',"--bf",help="Begin Frame (Frame ID)",default=int(0))
-        parser.add_argument('-ef',"--ef",help="End Frame (Frame ID)")
-        #parser.add_argument('-inflexion1',"--inflexion1",help="inflexion point")
-        #parser.add_argument('-inflexion2',"--inflexion2",help="inflexion point")       
-        #parser.add_argument('-distance1',"--distance1")
-        #parser.add_argument('-distance2',"--distance2")
+        parser.add_argument('-bt',"--bt",help="Begin Frame (Frame ID)",default=int(0))
+        parser.add_argument('-et',"--et",help="End Frame (Frame ID)")
         parser.add_argument('-length',"--length")
         parser.add_argument('-coverage',"--coverage")
-        #parser.add_argument('-mid',"--mid")
         parser.add_argument('-o',"--o")        	
  
         return parser
@@ -36,18 +31,15 @@ def main(args):
         XTCFile=args.f
         GROFile=args.s
         OUTFile=args.o
-        bf=int(args.bf)
-        ef=int(args.ef)
-        #inflexion=float(args.inflexion)
-        #distance=float(args.distance)
+        bt=int(args.bt)
+        et=int(args.et)
         length=float(args.length)
         coverage=int(args.coverage)
-        #mid_point=float(args.mid)
         data=np.loadtxt("Adsorption_points.xvg")
-        getTrajectoryDistribution(bf,ef,GROFile,XTCFile,data[0],data[1],data[2],data[3],length,data[4],coverage,OUTFile)
+        getTrajectoryDistribution(bt,et,GROFile,XTCFile,data[0],data[1],data[2],data[3],length,data[4],coverage,OUTFile)
 
 
-def obtainTrajectoryData(bf,ef,grofile,xtcfile):
+def obtainTrajectoryData(bt,et,grofile,xtcfile):
         global coordinates_pa
         global coordinates_mbl
         global coordinates_mbl_sep
@@ -61,10 +53,11 @@ def obtainTrajectoryData(bf,ef,grofile,xtcfile):
         global Lz_max
         global logfile
         global n_molecules
+        global bf
+        global ef
 
         logfile=open("output.log","w")	
         #Read the full trajectory from the xtc file
-        #u=mda.Universe("../test_files/last10ns.gro","../test_files/last10ns.xtc")
         u=mda.Universe(grofile,xtcfile)
         print(u)
 
@@ -79,11 +72,20 @@ def obtainTrajectoryData(bf,ef,grofile,xtcfile):
         coordinates_pa=[]
         box=[]
 
-        bf=int(bf-1)
-        ef=int(ef)
+        freq=[]
+        for ts in u.trajectory[0:2]:
+            freq.append(u.trajectory.time)
+        
+        time_diff=freq[1]-freq[0];
+
+        print(time_diff)
+
+        bf=(int)((bt-freq[0])/time_diff)
+        ef=(int)((et-freq[0])/time_diff)
+        print("bf:",bf,"ef:",ef)
 
         print("Reading trajectory...")
-        for ts in u.trajectory[bf:ef]:
+        for ts in u.trajectory[bf:ef+1]:
             logfile.write("\nReading timestep:%s\n"%(ts))
             coordinates_mbl.append(mbl.positions)
             coordinates_pa.append(pa.positions)
@@ -110,7 +112,6 @@ def obtainTrajectoryData(bf,ef,grofile,xtcfile):
 
         for i in range(0,len(coordinates_mbl)):
             placeholder=np.split(coordinates_mbl[i],n_molecules)
-            #placeholder=np.transpose(placeholder)
             coordinates_mbl_sep[i]=placeholder
                    
         print(np.shape(coordinates_mbl_sep))
@@ -141,7 +142,7 @@ def obtainTrajectoryData(bf,ef,grofile,xtcfile):
 
 def calculateFrameCOG(frame, input_group_coordinates):
 	
-	    #Obtaining the x,y and z coordinates for the given frame
+	#Obtaining the x,y and z coordinates for the given frame
         #The coordiates are extracted to treat raw or with PBC
         group_coordinates=input_group_coordinates.copy()
         x=input_group_coordinates[frame][:,0]
@@ -222,17 +223,19 @@ def calculate_frame_atoms(frame,molecule,input_group_coordinates):
 
 
 
-def getTrajectoryDistribution(bf,ef,grofile,xtcfile,inflexion1,inflexion2,distance1,distance2,length,mid_point,coverage,outfile):
+def getTrajectoryDistribution(bt,et,grofile,xtcfile,inflexion1,inflexion2,distance1,distance2,length,mid_point,coverage,outfile):
         
         #global coglist_pa
         #global coglist_mbl	
-        obtainTrajectoryData(bf,ef,grofile,xtcfile)	
+        obtainTrajectoryData(bt,et,grofile,xtcfile)	
+        print(ef)
+        print(bf)
         coglist_pa=np.full((ef,1),-100.0)
         count_mbl_adsorbed=np.full((ef,1),0)
         #freq_cog_pa=np.full((x_n_bins,y_n_bins),0)
         #freq_cog_mbl=np.full((x_n_bins,y_n_bins),0)
         
-        bf=bf-1
+        #bf=bf-1
  
 
         mid_point=mid_point+Lz_max/2
