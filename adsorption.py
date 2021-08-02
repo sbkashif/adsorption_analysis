@@ -274,6 +274,3 @@ if __name__=='__main__':
 	args = create_parser().parse_args()
 	main(args)
     
-#obtainTrajectoryData(0.1,0.1,1999,2001)
-#readFrame(1)
-#getTrajectoryDistribution(0.3,0.3,1900,2000)
